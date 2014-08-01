@@ -1,0 +1,47 @@
+config:
+  starting_time: 30
+  allowed_commands: [vd,abandonar]
+  lang:
+    waiting_for_players: Esperando jugadores. $1/$2
+    left_arena: $1 dejo la arena.
+    starting_in: Comenzando en... $1 s.
+    starting: Atento! Oleada $1.
+    sb_starting: Empezando...
+    sb_wave: Oleada $1
+    sb_alive: Vivos
+    sb_dead: Muertos
+    sb_zombies: Zombies
+    sb_villagers: Aldeanos
+    wawe: Oleada $1.
+    left: Dejaste la arena.
+    z_win: Los zombies mataron todos los aldeanos.
+    v_win: Aldeanos defendidos. 10s para la siguiente oleada. BONUS! +$1 puntos por sobrevivir $2 aldeanos.
+    p_dead: Todos los jugadores han muerto. Habeis perdido.
+    no_perm: No tienes permiso para hacer eso.
+    need_to_play: Necesitas estar jugando para usar ese comando.
+    no_command_in_game: No puedes usar ese comando jugando.
+    kit_book: Selecciona kit
+    kit_book_desc: Puedes seleccionar kit con este objeto.
+    kit_book_gui_name: Por favor selecciona kit.
+    kit_vip: Solo para VIP.
+    kit_vip_chat: Lo siento, esto solo lo pueden usar los VIP.
+    kit_selected: Kit seleccionado correctamente.
+    emerald_shop: Tienda de esmeraldas
+    emerald_shop_desc: Gasta tus esmeraldas para comprar
+    emerald_shop_gui_name: Tienda esmeralda
+    emerald_shop_price: Cuesta $1 punto.
+    emerald_shop_ne_money: No tienes suficiente dinero.
+    emerald_shop_bought: Comprado correctamente.
+    arena_reloaded: La arena se ha recargado.
+    arena_full: La arena esta llena.
+    arena_started: Esta arena ya ha comenzado!
+    compra_vip: Para acceder a arenas que ya han comenzado y muchos mas beneficios, compra tu rango VIP en INSERTARWEB.
+    invite: $1 invito a todo el mundo a unirse a la arena $2!
+    invite_sur: Invitaste correctamente a todo el mundo a unirse a la arena.
+    points: Puntos
+    died: $1 ha muerto!
+    kill: Vaya asesinato! +$1 puntos!
+    vill_death: Un aldeano ha muerto! Quedan $1!
+    sign: 'Click para unirte.'
+    sign_full: 'Arena llena.'
+arenas:
