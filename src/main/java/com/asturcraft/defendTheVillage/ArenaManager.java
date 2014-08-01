@@ -19,6 +19,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -53,11 +54,11 @@ public class ArenaManager
 
 	public ArenaManager(Main pl) {
 		this.plugin = pl;
-	    this.POINTS_NAME = (ChatColor.DARK_GREEN + pl.leerConfig.get("points"));
-	    this.ALIVE_NAME = (ChatColor.GOLD + pl.leerConfig.get("sb_alive"));
-	    this.DEAD_NAME = (ChatColor.GRAY + pl.leerConfig.get("sb_dead"));
-	    this.ZOMBS_NAME = (ChatColor.RED + pl.leerConfig.get("sb_zombies"));
-	    this.VILLS_NAME = (ChatColor.GREEN + pl.leerConfig.get("sb_villagers"));
+	    this.POINTS_NAME = (ChatColor.DARK_GREEN + pl.config.get("points"));
+	    this.ALIVE_NAME = (ChatColor.GOLD + pl.config.get("sb_alive"));
+	    this.DEAD_NAME = (ChatColor.GRAY + pl.config.get("sb_dead"));
+	    this.ZOMBS_NAME = (ChatColor.RED + pl.config.get("sb_zombies"));
+	    this.VILLS_NAME = (ChatColor.GREEN + pl.config.get("sb_villagers"));
 	}
 
 	public Arena getArena(int i) {
@@ -78,7 +79,7 @@ public class ArenaManager
 	}
 
 	public void addPlayer(final Player p, int i) {
-		if (!this.plugin.leerConfig.cu)
+		if (!this.plugin.config.cu)
 			return;
 		if ((!p.isOnline()) || (p.isDead()))
 			return;
@@ -90,8 +91,8 @@ public class ArenaManager
 
 		if (!a.puedeUnirse) {
 			if (!p.hasPermission("vd.vip")) {
-				this.plugin.s(p, this.plugin.leerConfig.get("arena_started"));
-				this.plugin.s(p, this.plugin.leerConfig.get("compra_vip"));
+				this.plugin.s(p, this.plugin.config.get("arena_started"));
+				this.plugin.s(p, this.plugin.config.get("compra_vip"));
 				return;
 			}
 		}
@@ -101,7 +102,7 @@ public class ArenaManager
 		}
 		
 		if (a.getPlayers().size() >= a.maximoJugadores) {
-			this.plugin.s(p, this.plugin.leerConfig.get("arena_full"));
+			this.plugin.s(p, this.plugin.config.get("arena_full"));
 			return;
 		}
 
@@ -129,7 +130,7 @@ public class ArenaManager
 
 		for (Player pl : getPlayersInArena(a)) {
 			if (a.puedeUnirse) { //Para que no salga a los que se acaban de unir
-				this.plugin.s(pl, this.plugin.leerConfig.get("waiting_for_players").replace("$1", Integer.toString(a.getPlayers().size())).replace("$2", Integer.toString(a.maximoJugadores)));
+				this.plugin.s(pl, this.plugin.config.get("waiting_for_players").replace("$1", Integer.toString(a.getPlayers().size())).replace("$2", Integer.toString(a.maximoJugadores)));
 			}
 			this.plugin.s(pl, "El jugador " + p.getName() + " se ha unido a la arena.");
 		}
@@ -138,7 +139,7 @@ public class ArenaManager
 			a.noHaEmpezado = true;
 			a.contador = this.plugin.getConfig().getInt("config.starting_time");
 			for (Player pl : getPlayersInArena(a)) {
-				this.plugin.s(pl, this.plugin.leerConfig.get("starting_in").replace("$1", Integer.toString(a.contador)));
+				this.plugin.s(pl, this.plugin.config.get("starting_in").replace("$1", Integer.toString(a.contador)));
 			}
 		}
 
@@ -147,7 +148,7 @@ public class ArenaManager
 			a.noHaEmpezado = true;
 			a.contador = 50;
 			for (Player pl : getPlayersInArena(a)) {
-				this.plugin.s(pl, this.plugin.leerConfig.get("starting_in").replace("$1", Integer.toString(a.contador)));
+				this.plugin.s(pl, this.plugin.config.get("starting_in").replace("$1", Integer.toString(a.contador)));
 				p.setHealth(20);
 				p.setFoodLevel(20);
 			}
@@ -173,7 +174,7 @@ public class ArenaManager
 	}
 
 	public void removePlayerA(final Player p) {
-		if (!this.plugin.leerConfig.cu)
+		if (!this.plugin.config.cu)
 			return;
 		if (!p.isOnline()) //Tiene que estar conectado
 			return;
@@ -235,7 +236,7 @@ public class ArenaManager
 		}
 
 		for (Player pl : getPlayersInArena(a)) {
-			this.plugin.s(pl, this.plugin.leerConfig.get("left_arena").replace("$1", p.getName()));
+			this.plugin.s(pl, this.plugin.config.get("left_arena").replace("$1", p.getName()));
 		}
 
 		this.plugin.updateSign(a);
@@ -248,7 +249,7 @@ public class ArenaManager
 
 	public Arena createArena(Location z1, Location z2, Location z3, Location v1, Location v2, Location v3, Location ps, Location lobby, String pav, int id, int icon, int mp)
 	{
-		if (!this.plugin.leerConfig.cu)
+		if (!this.plugin.config.cu)
 			return null;
 		this.plugin.getConfig().set("arenas." + id + ".name", pav);
 		this.plugin.getConfig().set("arenas." + id + ".z1", serializeLoc(z1));
@@ -268,7 +269,7 @@ public class ArenaManager
 	}
 
 	public void setArenaSetup(int id, String setup, Object var) {
-		if (!this.plugin.leerConfig.cu)
+		if (!this.plugin.config.cu)
 			return;
 		this.plugin.getConfig().set("arenas." + id + "." + setup, var);
 		this.plugin.saveConfig();
@@ -278,6 +279,14 @@ public class ArenaManager
 	public boolean isInGame(Player p) {
 		for (Arena a : this.arenas) {
 			if (a.getPlayers().contains(p.getName()))
+				return true;
+		}
+		return false;
+	}
+	
+	public boolean isInGame(Zombie z) {
+		for (Arena a : this.arenas) {
+			if (a.getZombies().contains(z))
 				return true;
 		}
 		return false;
@@ -306,7 +315,7 @@ public class ArenaManager
 			if (Bukkit.getPlayer(s) == null) {
 				a.jugadores.remove(s);
 			} else {
-				this.plugin.s(Bukkit.getPlayer(s), this.plugin.leerConfig.get("starting").replace("$1", Integer.toString(a.oleada)));
+				this.plugin.s(Bukkit.getPlayer(s), this.plugin.config.get("starting").replace("$1", Integer.toString(a.oleada)));
 				if (!Bukkit.getPlayer(s).getInventory().contains(this.plugin.esmeralda_item)) {
 					Bukkit.getPlayer(s).getInventory().addItem(new ItemStack[] { this.plugin.esmeralda_item });
 				}
@@ -316,7 +325,7 @@ public class ArenaManager
 				Player p = Bukkit.getPlayer(s);
 				if (p.getScoreboard().getObjective(DisplaySlot.SIDEBAR) == null)
 					createScoreboard(p, a);
-				p.getScoreboard().getObjective(DisplaySlot.SIDEBAR).setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.leerConfig.get("sb_wave").replace("$1", "1") + ChatColor.DARK_GRAY + " -");
+				p.getScoreboard().getObjective(DisplaySlot.SIDEBAR).setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.config.get("sb_wave").replace("$1", "1") + ChatColor.DARK_GRAY + " -");
 				p.setHealth(20);
 				p.setFoodLevel(20);
 				
@@ -370,7 +379,7 @@ public class ArenaManager
 			if (jugador == null) {
 				a.jugadores.remove(s);
 			} else {
-				this.plugin.s(jugador, this.plugin.leerConfig.get("starting").replace("$1", Integer.toString(a.oleada)));
+				this.plugin.s(jugador, this.plugin.config.get("starting").replace("$1", Integer.toString(a.oleada)));
 				if (!jugador.getInventory().contains(this.plugin.esmeralda_item)) {
 					if (this.plugin.getKit(jugador).equals("hardcore")) {
 						//No le doy item, porque está muerto
@@ -385,7 +394,7 @@ public class ArenaManager
 				}
 				if (jugador.getScoreboard().getObjective(DisplaySlot.SIDEBAR) == null)
 					createScoreboard(jugador, a);
-				jugador.getScoreboard().getObjective(DisplaySlot.SIDEBAR).setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.leerConfig.get("sb_wave").replace("$1", new StringBuilder(String.valueOf(a.oleada)).toString()) + ChatColor.DARK_GRAY + " -");
+				jugador.getScoreboard().getObjective(DisplaySlot.SIDEBAR).setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.config.get("sb_wave").replace("$1", new StringBuilder(String.valueOf(a.oleada)).toString()) + ChatColor.DARK_GRAY + " -");
 			}
 		}
 
@@ -546,7 +555,7 @@ public class ArenaManager
 		if ((a.aldeanos.size() == 0) && (a.check)) {
 			Main._log("0 encontrados!");
 			for (String s : a.jugadores) {
-				this.plugin.s(Bukkit.getPlayer(s), this.plugin.leerConfig.get("z_win"));
+				this.plugin.s(Bukkit.getPlayer(s), this.plugin.config.get("z_win"));
 			}
 			this.plugin.reloadArena(a.id);
 		}
@@ -641,7 +650,7 @@ public class ArenaManager
 			
 			for (String s : a.jugadores) {
 				if (!a.noHaEmpezado) {
-					this.plugin.s(Bukkit.getPlayer(s), this.plugin.leerConfig.get("v_win").replace("$1", Integer.toString(vilag * 3)).replace("$2", Integer.toString(vilag)));
+					this.plugin.s(Bukkit.getPlayer(s), this.plugin.config.get("v_win").replace("$1", Integer.toString(vilag * 3)).replace("$2", Integer.toString(vilag)));
 					addScore(Bukkit.getPlayer(s), vilag * 3);
 				}
 			}
@@ -674,7 +683,7 @@ public class ArenaManager
 		if ((a.jugadores.size() <= a.jugadoresmuertos.size()) && (a.check)) {
 			Main._log("Todos los jugadores han muerto!");
 			for (String s : a.jugadores) {
-				this.plugin.s(Bukkit.getPlayer(s), this.plugin.leerConfig.get("p_dead"));
+				this.plugin.s(Bukkit.getPlayer(s), this.plugin.config.get("p_dead"));
 			}
 			this.plugin.reloadArena(a.id);
 		}
@@ -711,7 +720,7 @@ public class ArenaManager
 			return;
 		}
 		Objective objective = Bukkit.getScoreboardManager().getNewScoreboard().registerNewObjective("VillageDef", "dummy");
-		objective.setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.leerConfig.get("sb_starting") + ChatColor.DARK_GRAY + " -");
+		objective.setDisplayName(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + this.plugin.config.get("sb_starting") + ChatColor.DARK_GRAY + " -");
 		objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 		pl.setScoreboard(objective.getScoreboard());
 

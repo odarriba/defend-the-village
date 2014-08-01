@@ -63,4 +63,8 @@ public class Arena
 	public CopyOnWriteArrayList<String> getPlayers() {
 		return this.jugadores;
 	}
+	
+	public CopyOnWriteArrayList<Zombie> getZombies() {
+		return this.zombies;
+	}
 }

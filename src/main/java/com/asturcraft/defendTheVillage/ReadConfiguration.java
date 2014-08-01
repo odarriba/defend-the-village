@@ -7,12 +7,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.Plugin;
 
-public class LeerConfiguracion{
+public class ReadConfiguration{
 	Plugin p;
 	FileConfiguration c;
 	public boolean cu = true;
 
-	public LeerConfiguracion(Plugin pl) {
+	public ReadConfiguration(Plugin pl) {
 		this.p = pl;
 		this.c = this.p.getConfig();
 	}
@@ -20,8 +20,8 @@ public class LeerConfiguracion{
 	public String get(String s) {
 		String r = (String)this.c.get("config.lang." + s);
 		if (r == null) {
-			Main._logE("Error. No se ha encontrado el string: config.lang." + s + " . Borra el fichero de configuración y reinicia el servidor.");
-			return ChatColor.RED + "ERROR: Verifica la consola.";
+			Main._logE("Error - String not found: config.lang." + s + ". Remove the configuration file and restar the server..");
+			return ChatColor.RED + "ERROR: Please, contact an Administrator.";
 		}
 	return r;
 	}
