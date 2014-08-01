@@ -1,12 +1,12 @@
-name: DefiendeLaVilla
-version: 1.1
+name: Defend The Village
+version: 1.1b
 autors: [odarriba] 
-main: com.asturcraft.defiendelavilla.Main
+main: com.asturcraft.defendTheVillager.Main
 softdepend: [Multiverse-Core]
 depend: [ForceRespawn]
 commands:
   vd:
-    description: Minijuego de Defensa de la Villa.
+    description: Minigame of Defend The Village.
     aliases: [villagedefence, villagedef]
   abandonar:
-    description: Deja la arena.
+    description: Left the arena.
