@@ -18,22 +18,22 @@ public class Arena
 	public Location lobby;
 	public Location sign = null;
 	public int id;
-	public int oleada = 0;
-	public int maximoJugadores = 0;
-	public int contador = 60;
+	public int wave = 0;
+	public int maxPlayers = 0;
+	public int counter = 60;
 	public float vil = 3.0F;
 	public float zomb = 2.0F;
 	public float b = 0.0F;
-	public boolean esperandoSiguienteOleada = false;
-	public boolean noHaEmpezado = false;
+	public boolean waitingNextWave = false;
+	public boolean notStarted = false;
 	public boolean check = false;
-	public boolean puedeUnirse = true;
-	public boolean cambiarKit = true;
-	public CopyOnWriteArrayList<String> jugadores = new CopyOnWriteArrayList();
-	public CopyOnWriteArrayList<String> jugadoresmuertos = new CopyOnWriteArrayList();
-	public CopyOnWriteArrayList<Villager> aldeanos = new CopyOnWriteArrayList();
+	public boolean canJoin = true;
+	public boolean changeKit = true;
+	public CopyOnWriteArrayList<String> players = new CopyOnWriteArrayList();
+	public CopyOnWriteArrayList<String> deadPlayers = new CopyOnWriteArrayList();
+	public CopyOnWriteArrayList<Villager> villagers = new CopyOnWriteArrayList();
 	public CopyOnWriteArrayList<Zombie> zombies = new CopyOnWriteArrayList();
-	public CopyOnWriteArrayList<Skeleton> esqueletos = new CopyOnWriteArrayList();
+	public CopyOnWriteArrayList<Skeleton> skeletons = new CopyOnWriteArrayList();
 	public String pav;
 
 	public Arena(Location z1, Location z2, Location z3, Location v1, Location v2, Location v3, Location ps, Location lobby, String pav, int id, int maxPlayers)
@@ -49,7 +49,7 @@ public class Arena
 		this.ps = ps;
 		this.lobby = lobby;
 		this.id = id;
-		this.maximoJugadores = maxPlayers;
+		this.maxPlayers = maxPlayers;
 	}
 
 	public String toString() {
@@ -61,7 +61,7 @@ public class Arena
 	}
 
 	public CopyOnWriteArrayList<String> getPlayers() {
-		return this.jugadores;
+		return this.players;
 	}
 	
 	public CopyOnWriteArrayList<Zombie> getZombies() {

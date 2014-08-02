@@ -5,8 +5,6 @@ main: com.asturcraft.defendTheVillage.Main
 softdepend: [Multiverse-Core]
 depend: [ForceRespawn]
 commands:
-  vd:
+  dlv:
     description: Minigame of Defend The Village.
     aliases: [villagedefence, villagedef]
-  abandonar:
-    description: Left the arena.

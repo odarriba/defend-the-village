@@ -26,6 +26,7 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
@@ -121,60 +122,75 @@ public class Main extends JavaPlugin implements Listener {
 		
 		_logD("DEBUG INFO IS ENABLED!");
 
+		// Task of count down to start arenas and new waves
 		Bukkit.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 			public void run() {
 				for (Arena a : Main.this.am.arenas) {
-					if (a.noHaEmpezado) {
-						if (a.contador == 0) {
+					// If the arena isn't started
+					if (a.notStarted) {
+						if (a.counter == 0) {
+							// Counter is 0. Start now!
 							Main.this.am.start(a);
-							a.noHaEmpezado = false;
+							a.notStarted = false;
 						} else {
-							a.contador -= 1;
-							if (a.contador % 5 == 0) {
-								//Cada 5 segundos aviso a los jugadores
-								for (String s : a.jugadores)
-									Main.this.s(Bukkit.getPlayer(s), Main.plugin.config.get("starting_in").replace("$1", Integer.toString(a.contador)));
+							// Count down
+							a.counter -= 1;
+							
+							// Every 5 seconds tell the players
+							if (a.counter % 5 == 0) {
+								for (String s : a.players)
+									Main.this.s(Bukkit.getPlayer(s), Main.plugin.config.get("starting_in").replace("$1", Integer.toString(a.counter)));
 							}
 						}
 					}
-					else if (a.esperandoSiguienteOleada) {
-						if (a.contador == 0) {
+					else if (a.waitingNextWave) { // If the arena is waiting for other wave
+						if (a.counter == 0) {
+							// Counter is 0. Next wave coming!
 							Main.this.am.nextwave(a);
-							a.esperandoSiguienteOleada = false;
+							a.waitingNextWave = false;
 						} else {
-							a.contador -= 1; //restamos 1 al contador
+							// Count down!
+							a.counter -= 1;
 						}
 					}
 				}
 			}
 		}, 20L, 20L);
 		
+		// Task to check zombies, players and villagers statuses
 		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 			public void run() {
+				// Check zombies
 				for (Arena a : Main.this.am.arenas) {
-					if ((!a.noHaEmpezado) && (!a.esperandoSiguienteOleada)) {
+					// Only check if the game it's playing
+					if ((!a.notStarted) && (!a.waitingNextWave)) {
 						boolean b = false;
 						
+						// Check if there is any kind of zombie entity
 						for (Entity e : a.z1.getWorld().getEntities()) {
-							if ((e instanceof Zombie)) {
+							if ((e instanceof Zombie) || (e instanceof Skeleton)) {
 								b = true;
 							}
 						}
 						
+						// If there is no zombies, clear the zombies ArrayList
 						if (!b)
 							a.zombies.clear();
 						
+						// Check zombies status
 						Main.this.am.checkZombies(a);
 					}
 				}
 				
 				Entity e;
 				
+				// Check villagers
 				for (Arena a : Main.this.am.arenas) {
-					if ((!a.noHaEmpezado) && (!a.esperandoSiguienteOleada)) {
+					if ((!a.notStarted) && (!a.waitingNextWave)) {
 						boolean b = false;
 						Iterator itr = a.v1.getWorld().getEntities().iterator();
 						
+						// Check if there is any villager entity
 						while (itr.hasNext()) {
 							e = (Entity) itr.next();
 							if ((e instanceof Villager)) {
@@ -182,22 +198,28 @@ public class Main extends JavaPlugin implements Listener {
 							}
 						}
 						
+						// If there isn't villagers, clear the villagers ArrayList
 						if (!b)
-							a.aldeanos.clear();
+							a.villagers.clear();
 						
+						// Check villagers status
 						Main.this.am.checkVillagers(a);
 					}
 				}
 				
+				// Check players
 				for (Arena a : Main.this.am.arenas){
-					if ((!a.noHaEmpezado) && (!a.esperandoSiguienteOleada)) {
+					if ((!a.notStarted) && (!a.waitingNextWave)) {
+						// Check existence of players
 						for (String s : a.getPlayers()) {
 							Player p = Bukkit.getPlayer(s);
 							
+							// If the player is null, remove from player's ArrayList
 							if (p == null)
 								a.getPlayers().remove(s);
 						}
 						
+						// Check players status
 						Main.this.am.checkPlayers(a);
 					}
 				}
@@ -205,16 +227,20 @@ public class Main extends JavaPlugin implements Listener {
 		}, 200L, 200L);
 	}
 
+	// Load arena configuration
 	private void loadArenaConfig()
 	{
-		if ((this.config.cu) && (getConfig().getList("config.allowed_commands") != null)) {
+		// Load allowed commands
+		if (getConfig().getList("config.allowed_commands") != null) {
 			this.allowedCommands = ((ArrayList)getConfig().getList("config.allowed_commands"));
 		}
 		
+		// Load debug configuration
 		if ((getConfig().getString("debug") != null) && (getConfig().getString("debug").equals("true"))){
 			Main.debug = true;
 		}
 		
+		// Load arenas configuration
 		if (getConfig().getConfigurationSection("arenas") != null) {
 			Iterator iterator = getConfig().getConfigurationSection("arenas").getKeys(false).iterator();
 			
@@ -226,13 +252,10 @@ public class Main extends JavaPlugin implements Listener {
 					id = Integer.parseInt(arena);
 				} catch (Exception localException) { }
 				
+				// Arena name
 				String name = getConfig().getString("arenas." + id + ".name");
-				
-				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".ps")).getWorld() == null) {
-					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".ps").split(",")[0]));
-					_log("! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".ps").toString()).split(",")[0] + "not found. Importing!");
-				}
 
+				// Load zombie and villagers spawn points
 				Location z1 = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z1"));
 				Location z2 = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z2"));
 				Location z3 = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z3"));
@@ -241,10 +264,61 @@ public class Main extends JavaPlugin implements Listener {
 				Location v3 = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".v3"));
 				Location ps = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".ps"));
 				Location lobby = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".lobby"));
+				
+				// Check existence of all the desired worlds
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".ps")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".ps").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".ps").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z1")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".z1").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".z1").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z2")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".z2").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".z2").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z3")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".z3").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".z3").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".v1")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".v1").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".v1").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".v2")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".v2").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".v2").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".v3")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".v3").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".v3").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".lobby")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".lobby").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".lobby").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				if (this.am.deserializeLoc(getConfig().getString("arenas." + id + ".sign")).getWorld() == null) {
+					Bukkit.createWorld(new WorldCreator(getConfig().getString("arenas." + id + ".sign").split(",")[0]));
+					_log("WARNING! World " + getConfig().getString(new StringBuilder("arenas.").append(id).append(".sign").toString()).split(",")[0] + "not found. Importing!");
+				}
+				
+				// Load max number of players
 				int mp = getConfig().getInt("arenas." + id + ".maxplayers");
+				
+				// Create the Arena object and add it
 				Arena arenaname = new Arena(z1, z2, z3, v1, v2, v3, ps, lobby, name, id, mp);
 				this.am.arenas.add(arenaname);
 
+				// Get the sign configuration
 				if (getConfig().contains("arenas." + id + ".sign")) {
 					Location sign = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".sign"));
 					arenaname.sign = sign;
@@ -259,48 +333,51 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
+	// Function to reload a finished arena
 	public synchronized void reloadArena(final int id) {
 		_log("Reloading arena " + id + ".");
 		
-		if ((this.config.cu) && (this.am.arenas.contains(this.am.getArena(id)))) {
+		if (this.am.arenas.contains(this.am.getArena(id))) {
 			Arena a = this.am.getArena(id);
 			
-			for (String s : a.jugadoresmuertos) {
+			// Remove dead players
+			for (String s : a.deadPlayers) {
 				Player p = Bukkit.getPlayer(s);
+				
+				// Don't fly anymore
 				p.setFlying(false);
 				p.setAllowFlight(false);
 
+				// Back to be shown
 				for (Player pl : Bukkit.getOnlinePlayers()) {
 					if (p != pl) {
 						pl.showPlayer(p);
 					}
 				}
 				
-				a.jugadoresmuertos.remove(s);
-			}
-
-			for (Zombie s : this.am.getArena(id).zombies) {
-				s.remove();
+				a.deadPlayers.remove(s);
 			}
 			
-			for (Villager s : this.am.getArena(id).aldeanos) {
-				s.remove();
-			}
-			
+			// Remove zombies, skeletons and villagers
 			for (Entity e : a.ps.getWorld().getEntities()) {
-				if ((e.getType().equals(EntityType.ZOMBIE)) || (e.getType().equals(EntityType.VILLAGER))) {
+				if ((e.getType().equals(EntityType.ZOMBIE)) || (e.getType().equals(EntityType.SKELETON)) || (e.getType().equals(EntityType.VILLAGER))) {
 					e.remove();
 				}
 			}
 			
+			// Remove the players from the arena
 			for (String s : this.am.getArena(id).getPlayers()) {
 				Player p = Bukkit.getPlayer(s);
+				
+				// Set tanque kit to avoid being hardcore
 				setKit(p, "tanque");
 				this.am.removePlayer(p);
 			}
 			
+			// Don't check this arena anymore
 			a.check = false;
 
+			// Remove arena object from memory
 			Bukkit.getScheduler().scheduleSyncDelayedTask(Main.plugin, new Runnable() {
 				public void run() {
 					am.arenas.remove(am.getArena(id));
@@ -308,6 +385,7 @@ public class Main extends JavaPlugin implements Listener {
 			}, 20L);
 		}
 
+		// Load arena again from config
 		if (getConfig().getConfigurationSection("arenas." + id) != null) {
 			String name = getConfig().getString("arenas." + id + ".name");
 			Location z1 = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".z1"));
@@ -319,6 +397,7 @@ public class Main extends JavaPlugin implements Listener {
 			Location ps = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".ps"));
 			Location lobby = this.am.deserializeLoc(getConfig().getString("arenas." + id + ".lobby"));
 			int mp = getConfig().getInt("arenas." + id + ".maxplayers");
+			
 			Arena arenaname = new Arena(z1, z2, z3, v1, v2, v3, ps, lobby, name, id, mp);
 			this.am.arenas.add(arenaname);
 
@@ -327,18 +406,18 @@ public class Main extends JavaPlugin implements Listener {
 				arenaname.sign = sign;
 				updateSign(arenaname);
 			}
-			
-			_log("! If you see any errors above, check arena: " + id + " !");
 		}
 	}
-	//FIN de reloadArena
 
+	// Function to handle disble of the plug-in
 	public void onDisable() {
 		for (Arena a : this.am.arenas) {
+			// Reload every arena
 			reloadArena(a.getId());
 		}
 	}
 
+	// Function to convert an array into a string
 	public String arrayToString(String[] args, int offset) {
 		String s = "";
 		
@@ -351,24 +430,31 @@ public class Main extends JavaPlugin implements Listener {
 		return s;
 	}
 
+	// Function to check arguments
 	public boolean checkArgs(String s) {
 		return ((s.equalsIgnoreCase("z1")) || (s.equalsIgnoreCase("z2")) || (s.equalsIgnoreCase("z3")) || (s.equalsIgnoreCase("v1")) || 
 				(s.equalsIgnoreCase("v2")) || (s.equalsIgnoreCase("v3")) || (s.equalsIgnoreCase("name")) || 
 				(s.equalsIgnoreCase("ps")) || (s.equalsIgnoreCase("lobby")) || (s.equalsIgnoreCase("maxplayers")));
 	}
 
+	// Function to check arguments of integers
 	public boolean checkArgsInt(String s) {
 		return s.equalsIgnoreCase("maxplayers");
 	}
 
+	// Function to handle commands from users
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-		if ((cmd.getName().equalsIgnoreCase("abandonar")) && (this.config.cu)) {
+		if (cmd.getName().equalsIgnoreCase("abandonar")) {
+			// User want's to quit
 			if ((sender instanceof Player)) {
 				Player pl = (Player)sender;
+				
 				if (this.am.isInGame(pl)) {
+					// If it's in game, quit
 					this.am.removePlayer(pl);
 					s(sender, this.config.get("left"));
 				} else {
+					// If not
 					s(sender, this.config.get("need_to_play"));
 				}
 			} else {
@@ -376,43 +462,69 @@ public class Main extends JavaPlugin implements Listener {
 			}
 		}
 
-		if ((cmd.getName().equalsIgnoreCase("vd")) && (this.config.cu)) {
-			if (sender.hasPermission("vd.command")) {
-				if (args.length > 1) {
+		if (cmd.getName().equalsIgnoreCase("dlv")) {
+			if ((args.length > 0) && (args[0].equalsIgnoreCase("abandonar"))) {
+				// User want's to quit
+				if ((sender instanceof Player)) {
+					Player pl = (Player)sender;
 					
+					if (this.am.isInGame(pl)) {
+						// If it's in game, quit
+						this.am.removePlayer(pl);
+						s(sender, this.config.get("left"));
+					} else {
+						// If not, show a message
+						s(sender, this.config.get("need_to_play"));
+					}
+				} else {
+					s(sender, "This command can only be issued by a player.");
+				}
+			}
+			else if (sender.hasPermission("dlv.command")) { // The user has permission?
+				// Check number of arguments received
+				if (args.length > 1) {
+					// Create arena command
 					if (args[0].equalsIgnoreCase("crear")) {
 						if ((sender instanceof Player)) {
 							int id = 0;
+							
+							// ID must be an integer
 							try {
 								id = Integer.parseInt(args[1]);
 							} catch (Exception e) {
 								s(sender, "La ID debe ser un numero.");
 								return false;
 							}
+							
+							// ID must be from 0 to 26
 							if ((id < 0) && (id > 26)) {
 								s(sender, "Por favor elige una ID de 0 a 26.");
 								return false;
 							}
+							
+							// The ID is in use?
 							if (isArena(id)) {
 								s(sender, "Esa ID ya esta en uso.");
 								return false;
 							}
+							
 							Player p = (Player)sender;
+							
+							// Create the arena
 							this.am.createArena(p.getLocation(), p.getLocation(), p.getLocation(), p.getLocation(), p.getLocation(), p.getLocation(), p.getLocation(), p.getLocation(), id + "_arena", id, 1, 10);
-							s(p, "Arena numero" + id + " creada correctamente. Configurala con /vd configurar.");
+							s(p, "Arena numero" + id + " creada correctamente. Configurala con /dlv configurar.");
 						} else {
-							s(sender, "Este comando solo lo puede ejecutar un jugador.");
+							s(sender, "This command can only be issued by a player.");
 						}
 					}
 					else if (args[0].equalsIgnoreCase("configurar")) {
+						// Check arguments length
 						if (args.length < 3) {
-							s(sender, "Uso: /vd configurar <id_de_la_arena> <configuracion> [argumentos]");
+							s(sender, "Uso: /dlv configurar <id_de_la_arena> <configuracion> [argumentos]");
 							return false;
 						}
-						if (getConfig().getConfigurationSection("arenas." + args[1]) == null) {
-							s(sender, "ID de arena no encontrada.");
-							return false;
-						}
+						
+						// Is the ID a number?
 						int id = 0;
 						try {
 							id = Integer.parseInt(args[1]);
@@ -421,27 +533,47 @@ public class Main extends JavaPlugin implements Listener {
 							return false;
 						}
 						
+						// Does the arena exist?
+						if (getConfig().getConfigurationSection("arenas." + args[1]) == null) {
+							s(sender, "ID de arena no encontrada.");
+							return false;
+						}
+						
+						// Get the variable name
 						args[2] = args[2].toLowerCase();
 						if (checkArgs(args[2])) {
+							// Its setting a location?
 							if ((args[2].toLowerCase().startsWith("v")) || (args[2].toLowerCase().startsWith("z")) || (args[2].equalsIgnoreCase("ps")) || (args[2].equalsIgnoreCase("lobby"))) {
 								if ((sender instanceof Player)) {
 									Player p = (Player)sender;
+									
+									// Use player's location
 									this.am.setArenaSetup(id, args[2], this.am.serializeLoc(p.getLocation()));
+									
+									// Reload the arena
 									reloadArena(id);
+									
 									s(sender, "Cambiada correctamente la configuracion de \"" + args[2] + "\" a \"" + this.am.serializeLoc(p.getLocation()) + "\".");
 								} else {
-									s(sender, "Este comando solo lo puede ejecutar un jugador.");
+									s(sender, "This command can only be issued by a player.");
 								}
 							} else {
+								// Check arguments length
 								if (args.length < 4) {
 									s(sender, "Esta configuracion requiere argumentos.");
 									return false;
 								}
+								
 								if (checkArgsInt(args[2])) {
 									try {
 										int idas = Integer.parseInt(args[3]);
+										
+										// Save the value
 										this.am.setArenaSetup(id, args[2], Integer.valueOf(idas));
+										
+										// Reload the arena
 										reloadArena(id);
+										
 										s(sender, "Cambiada correctamente la configuracion de \"" + args[2] + "\" a \"" + idas + "\".");
 										return false;
 									} catch (Exception e) {
@@ -449,22 +581,26 @@ public class Main extends JavaPlugin implements Listener {
 										return false;
 									}
 								}
+								// Save arena setup
 								this.am.setArenaSetup(id, args[2], args[3]);
+								
+								// Reload the arena
 								reloadArena(id);
+								
 								s(sender, "Cambiada correctamente la configuracion de \"" + args[2] + "\" a \"" + args[3] + "\".");
 							}
 						}
 						else s(sender, "Revisa tu configuracion.");
 					}
 				}
-				else if (args.length == 1) {
+				else if (args.length == 1) { // Help message
 					if (args[0].equalsIgnoreCase("crear")) {
-						s(sender, "Crea tu arena con el comando: /vd crear <id_de_la_arena>");
+						s(sender, "Crea tu arena con el comando: /dlv crear <id_de_la_arena>");
 						s(sender, "La ID de la arena debe ser de 0 a 26.");
-						s(sender, "Despues configurala con: /vd configurar");
+						s(sender, "Despues configurala con: /dlv configurar");
 					} else if (args[0].equalsIgnoreCase("configurar")) {
-						s(sender, "Configura tu arena con el comando: /vd configurar <id_de_la_arena> <configuracion> [argumentos]");
-						s(sender, "Ejemplo: /vd configurar 1 name PrimeraArena");
+						s(sender, "Configura tu arena con el comando: /dlv configurar <id_de_la_arena> <configuracion> [argumentos]");
+						s(sender, "Ejemplo: /dlv configurar 1 name PrimeraArena");
 						s(sender, "Configuraciones:");
 						s(sender, "z1 ... z3 - configura los 3 puntos de spawn de zombies. Se configura en tu posicion actual.");
 						s(sender, "v1 ... v3 - configura los 3 puntos de spawn de aldeanos. Se configura en tu posicion actual.");
@@ -473,40 +609,44 @@ public class Main extends JavaPlugin implements Listener {
 						s(sender, "name - configura el nombre de la arena. Necesita el argumento: <nombre>");
 						s(sender, "maxplayers - configura el numero maximo de jugadores. Necesita el argumento: <jugadores_maximo(solo numeros)>");
 					} else {
-						s(sender, "Prueba /vd.");
+						s(sender, "Prueba /dlv.");
 					}
 				} else {
 					s(sender, "Bienvenidos a Defiende la Villa.");
-					s(sender, "Solo los jugadores con el permiso \"vd.command\" pueden usar este comando.");
 					s(sender, "Comandos disponibles:");
-					s(sender, "/vd crear - escribelo para mas informacion.");
-					s(sender, "/vd configurar - escribelo para mas informacion.");
+					s(sender, "/dlv crear - escribelo para mas informacion.");
+					s(sender, "/dlv configurar - escribelo para mas informacion.");
+					s(sender, "/dlv abandonar - salir del juego.");
 				}
 			}
 			else s(sender, this.config.get("no_perm"));
 		}
 		return false;
 	} 
-
-		
+	
+	// Function to send a message to an user
 	void s(CommandSender s, String ss) {
-		s.sendMessage(ChatColor.GRAY + "V" + ChatColor.RED + "D " + ChatColor.WHITE + ss);
+		s.sendMessage("["+ChatColor.RED + "DLV" + ChatColor.WHITE + "] " + ss);
 	}
 
+	// Function to send a log to the server
 	public static void _log(String s) {
 		Bukkit.getLogger().info("[" + Main.plugin.getDescription().getName() + "] " + s);
 	}
 	
+	// Function to send a debug log to the server
 	public static void _logD(String s) {
 		if (Main.debug) {
-			Bukkit.getLogger().info("[" + Main.plugin.getDescription().getName() + "] " + s);
+			_log(s);
 		}
 	}
 
+	// Function to send an error log to the server
 	public static void _logE(String s) {
 		Bukkit.getLogger().log(Level.SEVERE, "[" + plugin.getDescription().getName() + "] " + s);
 	}
 
+	// Function to check if an id is from an arena
 	public boolean isArena(int id) {
 		for (Arena a : this.am.arenas)
 			if (a.id == id)
@@ -514,46 +654,57 @@ public class Main extends JavaPlugin implements Listener {
 		return false;
 	}
 
-	//Este metodo pone metadatos al jugador a la hora de elegir kit!!!!
+	// Function to set the metadata of an user about it's selected kit
 	public void setKit(Player jugador, String s) {
-		jugador.setMetadata("vdkit", new FixedMetadataValue(this, s));
+		jugador.setMetadata("dlvkit", new FixedMetadataValue(this, s));
 	}
 
-	//Este metodo lee los metadatos del jugador para el kit
+	// Function to get the metadata of an user about it's selected kit
 	public String getKit(Player pl) {
-		return ((MetadataValue)pl.getMetadata("vdkit").get(0)).asString();
+		return ((MetadataValue)pl.getMetadata("dlvkit").get(0)).asString();
 	}
 
-	//Para actualizar los carteles
+	// Function to update the lobby's signs
 	public void updateSign(Arena a) {
+		// Check if the arena has a sign asigned
 		if (a.sign != null) {
 			Sign s = (Sign)a.sign.getBlock().getState();
 			String name = a.pav;
+			
+			// If the name is too longer, cut it
 			if (name.length() > 16)
 				name = name.substring(0, 16);
+			
 			s.setLine(0, ChatColor.DARK_RED + a.pav);
-			s.setLine(2, ChatColor.GREEN + "" + a.jugadores.size() + ChatColor.GREEN + "/" + ChatColor.GREEN + a.maximoJugadores);
-			if (a.puedeUnirse) {
+			s.setLine(2, ChatColor.GREEN + "" + a.players.size() + ChatColor.GREEN + "/" + ChatColor.GREEN + a.maxPlayers);
+			
+			// Status of the arena
+			if (a.canJoin) {
 				s.setLine(1,ChatColor.DARK_PURPLE +  this.config.get("sb_starting"));
 				s.setLine(3,ChatColor.BLUE + this.config.get("sign"));
 			} else {
-				s.setLine(1,ChatColor.DARK_PURPLE + this.config.get("sb_wave").replace("$1", Integer.toString(a.oleada)));
+				s.setLine(1,ChatColor.DARK_PURPLE + this.config.get("sb_wave").replace("$1", Integer.toString(a.wave)));
 				s.setLine(3,ChatColor.DARK_BLUE + this.config.get("sign_full"));
 			}
 			s.update();
 		}
 	}
 
-	@EventHandler
+	// Function to handle Sign changes
+	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onChange(SignChangeEvent ev) {
-		if (ev.getLine(0).equals("[vd]")) {
+		if (ev.getLine(0).equals("[dlv]")) {
 			int aId = 0;
+			
+			// Check that the ID is a integer
 			try {
 				aId = Integer.parseInt(ev.getLine(1));
 			} catch (Exception e) {
 				s(ev.getPlayer(), "La ID no es un numero.");
 				return;
 			}
+			
+			// That integer is a valid arena?
 			if (isArena(aId)) {
 				this.am.setArenaSetup(aId, "sign", this.am.serializeLoc(ev.getBlock().getLocation()));
 				reloadArena(aId);
@@ -564,55 +715,86 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
-	@EventHandler
+	// Function to handle entity deads
+	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onD(EntityDeathEvent ev) {
-		//Si se muere un aldeano...
+		// Is a villager?
 		if (ev.getEntityType().equals(EntityType.VILLAGER)) {
 			Villager v = (Villager)ev.getEntity();
+			
+			// Get the arena of the villager
 			for (Arena a : this.am.arenas) {
-				if (a.aldeanos.contains(v)) {
-					a.aldeanos.remove(v);
+				if (a.villagers.contains(v)) {
+					// Remove it
+					a.villagers.remove(v);
+					
+					// Update score board
 					this.am.updateSc(a);
-					if (a.esperandoSiguienteOleada)
+					
+					// Is it waiting for the next wave?
+					if (a.waitingNextWave)
+						// Between waves all the villagers got killed
 						return;
-					for (String s : a.jugadores)
-						s(Bukkit.getPlayer(s), this.config.get("vill_death").replace("$1", Integer.toString(a.aldeanos.size())));
+					
+					for (String s : a.players)
+						// Notify the users
+						s(Bukkit.getPlayer(s), this.config.get("vill_death").replace("$1", Integer.toString(a.villagers.size())));
+					
+					// Check the villagers status
 					this.am.checkVillagers(a);
 				}
 			}
 		}
 
-		//Si lo que se muere es un zombie
-		if (ev.getEntityType().equals(EntityType.ZOMBIE)) {
-			ev.getDrops().clear(); //no dropea nada
-			ev.setDroppedExp(0); //Ni experiencia
+		// Is a zombie or boss?
+		if (ev.getEntityType().equals(EntityType.ZOMBIE) || ev.getEntityType().equals(EntityType.SKELETON)) {
+			Entity z = (Entity)ev.getEntity();
 			
-			//Ahora añado que dropee una gema!
-			ItemStack gema = new ItemStack(Material.EMERALD, 1);
-			ev.getDrops().add(gema);
-			
-			Zombie z = (Zombie)ev.getEntity();
+			// Find the arena of the zombie
 			for (Arena a : this.am.arenas)
 				if (a.zombies.contains(z)) {
+					// Remove from zombies ArrayList
 					a.zombies.remove(z);
+					
+					// Dont drop objects nor experience
+					ev.getDrops().clear();
+					ev.setDroppedExp(0);
+					
+					// Only drop an emerald for the shop
+					ItemStack emerald = new ItemStack(Material.EMERALD, 1);
+					ev.getDrops().add(emerald);
+					
+					// Update the scoreboard
 					this.am.updateSc(a);
-					if (a.esperandoSiguienteOleada)
+					
+					// If it's waiting for the next wave, do nothing
+					// because villagers and zombies are killed during
+					// the waiting
+					if (a.waitingNextWave)
 						return;
+					
+					// Check zombies status
 					this.am.checkZombies(a);
 
-					//Vamos a buscar el que lo mató para darle puntuación
+					// Find the killer player to give him points
 					if ((ev.getEntity().getLastDamageCause() instanceof EntityDamageByEntityEvent)) {
 						EntityDamageByEntityEvent nev = (EntityDamageByEntityEvent)ev.getEntity().getLastDamageCause();
+						
 						if ((nev.getDamager() instanceof Player)) {
 							Player p = (Player)nev.getDamager();
-							//Resulta que si es VIP se le da más puntos que no siendo vip... Estudiar a ver que se hace
-							if (p.hasPermission("vd.vip")) {
+							
+							// If the user is vip, give him more points
+							if (p.hasPermission("dlv.vip")) {
 								int ran = new Random().nextInt(15) + 16;
 								this.am.addScore(p, ran);
+								
+								// Notify the player
 								s(p, this.config.get("kill").replace("$1", Integer.toString(ran)));
 							} else {
 								int ran = new Random().nextInt(15) + 1;
 								this.am.addScore(p, ran);
+								
+								// Notify the player
 								s(p, this.config.get("kill").replace("$1", Integer.toString(ran)));
 							}
 						}
@@ -621,9 +803,9 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 	
-	//Evento para al coger la gema te de los puntos
-	@EventHandler
-	public void cogerGema(PlayerPickupItemEvent ev){
+	// Function to handle the pick-up of objects
+	@EventHandler(priority=EventPriority.HIGHEST)
+	public void getEmerald(PlayerPickupItemEvent ev){
 		 Player player = ev.getPlayer();
 		 
 		 if (!this.am.isInGame(player)){
@@ -635,7 +817,7 @@ public class Main extends JavaPlugin implements Listener {
 			 for (Arena arena : this.am.arenas) {
 				 // If the player is dead, can't get emeralds.
 				if (arena.getPlayers().contains(player.getName())) {
-					if (arena.jugadoresmuertos.contains(player.getName())) {
+					if (arena.deadPlayers.contains(player.getName())) {
 						ev.setCancelled(true);
 						return;
 					}
@@ -661,23 +843,28 @@ public class Main extends JavaPlugin implements Listener {
 				 ev.getItem().remove();
 			 }
 
-			 // Cncel the event (the player is gaming)
+			 // Cancel the event (the player is still gaming)
 			 ev.setCancelled(true);
 		 }
 	}
 
-	//Evento de si muere un jugador
-	@EventHandler
+	// Function to handle the death of a player
+	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onDeath(PlayerDeathEvent ev) {
-		if (this.am.isInGame(ev.getEntity())) {
+		// Is the player in game?
+		if (this.am.isInGame((Player)ev.getEntity())) {
+			// Dont' drop anything
 			ev.getDrops().clear();
 			ev.setDeathMessage(null);
+			
+			// Find the arena were the player is playing
 			for (Arena a : this.am.arenas) {
-				if (a.jugadores.contains(ev.getEntity().getName())) {
+				if (a.players.contains(ev.getEntity().getName())) {
 					for (Zombie z : a.zombies) {
+						// Send all the killer zombies to kill the villagers
 						if (z.getTarget().equals(ev.getEntity())) {
 							CraftZombie z2 = (CraftZombie) z;
-							z2.getHandle().setGoalTarget(((CraftLivingEntity) a.aldeanos.get(0)).getHandle());
+							z2.getHandle().setGoalTarget(((CraftLivingEntity) a.villagers.get(0)).getHandle());
 						}
 					}
 				}
@@ -685,47 +872,35 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
+	// Function to handle player's kick event
 	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onKick(PlayerKickEvent ev)
 	{
 		Player player = ev.getPlayer();
 		
 		if (this.am.isInGame(player)) {
+			// If the player is in game, remove it to avoid get locked
+			// in the arena.
 			this.am.removePlayer(player);
 		}
 	}
 	
+	// Function to handle respawn events
 	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onRespawn(PlayerRespawnEvent ev)
 	{
 		Player player = ev.getPlayer();
 		
-//		if (this.am.isInGame(ev.getPlayer())) {
-//			for (Arena a : this.am.arenas) {
-//				if (a.jugadores.contains(ev.getPlayer().getName())) {
-//					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado)) {
-//						//ev.setRespawnLocation(ev.getPlayer().getLocation());
-//						ev.setRespawnLocation(a.lobby);
-//						this.am.removePlayer(ev.getPlayer());
-//					} else {
-//						Player p = ev.getPlayer();
-//						this.am.añadirKit(p);
-//						ev.setRespawnLocation(a.ps);
-//					}
-//				}
-//			}
-//		}
-		
 		if (this.am.isInGame(player)) {
 			// Search in which arena the user is playing
 			for (Arena a : this.am.arenas) {
-				if (a.jugadores.contains(player.getName())) {
+				if (a.players.contains(player.getName())) {
 					// Found the arena!
-					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado) && (!a.jugadoresmuertos.contains(ev.getPlayer().getName()))) {
+					if ((!a.waitingNextWave) && (!a.notStarted) && (!a.deadPlayers.contains(ev.getPlayer().getName()))) {
 						_log("Poniendo al jugador en modo spectator");
 						// If there aren't waiting for the next wave, the game has started and the player wasn't dead, put him in
 						// spectator mode.
-						a.jugadoresmuertos.add(player.getName());
+						a.deadPlayers.add(player.getName());
 						
 						for (Player p : Bukkit.getOnlinePlayers()) {
 							if (p != player) {
@@ -742,7 +917,8 @@ public class Main extends JavaPlugin implements Listener {
 						
 						// Notify other players about the dead of this player
 						for (String s : a.getPlayers()) {
-							s(Bukkit.getPlayer(s), this.config.get("died").replace("$1", ev.getPlayer().getName()));
+							if (Bukkit.getPlayer(s) != null)
+								s(Bukkit.getPlayer(s), this.config.get("died").replace("$1", ev.getPlayer().getName()));
 						}
 						
 						// Remove potion effects in the player
@@ -750,58 +926,71 @@ public class Main extends JavaPlugin implements Listener {
 							ev.getPlayer().removePotionEffect(pe.getType());
 						}
 						
+						// Update score board
 						this.am.updateSc(a);
 					}
+					
+					// Check players status
 					this.am.checkPlayers(a);
 				}
 			}
 		}
 	}
 
-	//Evento de que sale el jugador
-	@EventHandler(priority = EventPriority.NORMAL)
+	// Function to handle the leave of a player from the server
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onLeave(PlayerQuitEvent ev) {
 		Player player = ev.getPlayer();
 		
 		if (this.am.isInGame(player)) {
+			// Remove it to avoid being locked in
+			// an arena world.
 			this.am.removePlayer(player);
 		}
 	}
 
-	//Evento de dropear objetos
-	@EventHandler
+	// Function to handle the drop of objects
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onDrop(PlayerDropItemEvent ev) {
 		Player player = ev.getPlayer();
 		
 		if (this.am.isInGame(player)){
+			// In game won't drop anything
 			ev.setCancelled(true);
 		}
 	}
 
-	//Esto anula comandos salvo los que estén en la config de no_command_in_game
-	@EventHandler
+	// Function to avoid commands not allowed in game
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onCommandPre(PlayerCommandPreprocessEvent ev) {
 		if (this.am.isInGame(ev.getPlayer())) {
+			// Only if the player is in game
 			boolean c = true;
+			
+			// Is it allowed?
 			for (String com : this.allowedCommands) {
 				if (ev.getMessage().toLowerCase().startsWith("/" + com)) {
 					c = false;
 				}
 			}
 			if (c)
+				// If the command is not allowed, notify the user
 				s(ev.getPlayer(), this.config.get("no_command_in_game"));
 			ev.setCancelled(c);
 		}
 	}
 
-	//Evento del target de los zombies
-	@EventHandler
-	public void onTarget(EntityTargetEvent ev) { //EntityTargetLivingEntityEvent ev) {
+	// Function to handle the event of target of the zombies
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void onTarget(EntityTargetEvent ev) {
 		if ((ev.getTarget() instanceof Player)) {
 			Player pl = (Player)ev.getTarget();
+			
+			// Is the player in game?
 			if (this.am.isInGame(pl)) {
 				for (Arena a : this.am.arenas) {
-					if ((a.jugadoresmuertos.contains(pl.getName())) || (a.noHaEmpezado) || (a.esperandoSiguienteOleada)) {
+					if ((a.deadPlayers.contains(pl.getName())) || (a.notStarted) || (a.waitingNextWave)) {
+						// If the player is dead, cancel the targetting
 						ev.setCancelled(true);
 					}
 				}
@@ -809,45 +998,62 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
-	//Evento para cancelar el hambre si está jugando
-	@EventHandler
+	//Function to handle the hunger (disable it) in game
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onHunger(FoodLevelChangeEvent ev) {
 		if ((ev.getEntity() instanceof Player)) {
 			Player pl = (Player)ev.getEntity();
+			
+			// Is the player in game?
 			if (this.am.isInGame(pl)) {
-				for (Arena a : this.am.arenas) {
-					if (a.jugadoresmuertos.contains(pl.getName()))
-						ev.setCancelled(true);
-				}
+				ev.setCancelled(true);
 			}
 		}
 	}
 
-	//Evento de daño a las entidades
-	@EventHandler
+	// Function to handle the damage to entities
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void entityDamage(EntityDamageEvent ev) {
 		if ((ev.getEntity() instanceof Player)) {
 			Player pl = (Player)ev.getEntity();
+			
 			if (this.am.isInGame(pl)) {
 				for (Arena a : this.am.arenas) {
-					if ((a.jugadoresmuertos.contains(pl.getName())) || (a.noHaEmpezado)) {
+					if ((a.deadPlayers.contains(pl.getName())) || (a.notStarted)) {
+						// Dead players cannot damage entities
 						ev.setCancelled(true);
 					}
 				}
 			}
 			else if (ev.getCause().equals(EntityDamageEvent.DamageCause.VOID)) {
+				// If the player fall into the void, cancel the damage and teleport him
 				ev.setCancelled(true);
 				pl.teleport(pl.getWorld().getSpawnLocation());
 			}
 		}
-		else if ((((ev.getEntity() instanceof Player)) || ((ev.getEntity() instanceof Villager))) && ((ev.getCause().equals(EntityDamageEvent.DamageCause.FIRE)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.FIRE_TICK)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.POISON)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.WITHER)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.MAGIC)))) {
-			ev.getEntity().setFireTicks(0);
-			ev.setCancelled(true);
+		else if ((ev.getCause().equals(EntityDamageEvent.DamageCause.FIRE)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.FIRE_TICK)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.POISON)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.WITHER)) || (ev.getCause().equals(EntityDamageEvent.DamageCause.MAGIC))) {
+			// Players and Villagers cannot be damaged by fire, potions or magic during game.
+			if (ev.getEntity() instanceof Player) {
+				// Check that the player is in game
+				if (this.am.isInGame((Player)ev.getEntity())) {
+					ev.getEntity().setFireTicks(0);
+					ev.setCancelled(true);
+				}
+			}
+			else if (ev.getEntity() instanceof Villager){
+				// Check that the villager is in game
+				for (Arena a : this.am.arenas) {
+					if (a.villagers.contains(ev.getEntity())){
+						ev.getEntity().setFireTicks(0);
+						ev.setCancelled(true);
+					}
+				}
+			}
 		}
 	}
 
-	// To avoid the zombies firing during sun time
-	@EventHandler
+	// Function to handle combustion event to avoid the zombies firing during sun time
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onEntityCombust(EntityCombustEvent event) {
 		if ((event.getEntity() instanceof Zombie))
 			// Only apply if the zombie is in an arena world
@@ -856,38 +1062,44 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
-	//Para evitar dañar a los aldeanos u a otros jugadores
-	@EventHandler
+	//Function to handle damage in order to avoid PVP or PVV
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onDamage(EntityDamageByEntityEvent ev) {
 		if ((ev.getDamager() instanceof Player)) {
 			Player pl = (Player)ev.getDamager();
+			
+			// Is in game?
 			if (this.am.isInGame(pl)) {
 				if (((ev.getEntity() instanceof Villager)) || ((ev.getEntity() instanceof Player))) {
+					// Cancel damage
 					ev.setCancelled(true);
 				}
-				for (Arena a : this.am.arenas)
-					if (a.jugadoresmuertos.contains(pl.getName()))
+				
+				for (Arena a : this.am.arenas) {
+					if (a.deadPlayers.contains(pl.getName())) {
+						// Avoid damage by dead players
 						ev.setCancelled(true);
+					}
+				}
 			}
 		}
-		else if (ev.getDamager() instanceof Arrow){ //Para evitar el daño por arco
+		else if (ev.getDamager() instanceof Arrow){ // To avoid damage by arrow
 			if (((ev.getEntity() instanceof Villager)) || ((ev.getEntity() instanceof Player))) {
 				ev.setCancelled(true);
 			}
         }
 	}
 
-	//Para que no puedan comerciar con los aldeanos
-	@EventHandler
+	// Function to handle interactions to avoid trading during game
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInterEnt(PlayerInteractEntityEvent ev) {
 		if (((ev.getRightClicked() instanceof Villager)) && (this.am.isInGame(ev.getPlayer())))
 			ev.setCancelled(true);
 	}
 
-	@EventHandler
+	// Function to handle interactions of the players
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInteract(PlayerInteractEvent ev) {
-		//Object localObject1;
-		
 		Player jugador = ev.getPlayer();
 		
 		if (this.am.isInGame(ev.getPlayer()))
@@ -895,70 +1107,75 @@ public class Main extends JavaPlugin implements Listener {
 			Iterator<Arena> localObject1 = this.am.arenas.iterator();
 			while (localObject1.hasNext()) {
 				Arena a = localObject1.next();
-				if (a.jugadoresmuertos.contains(ev.getPlayer().getName())) {
+				if (a.deadPlayers.contains(ev.getPlayer().getName())) {
+					// If the player is dead, cancel the event
 					ev.setCancelled(true);
 				}
 			}
+			
+			// Click using the kits book
+			if (jugador.getItemInHand().equals(this.object_kits_book)) {
+				this.selectKit.show(jugador);
+				ev.setCancelled(true);
+			}
+			
+			// Click using the emerald shop item
+			if (jugador.getItemInHand().equals(this.emerald_item)) {
+				this.gemShop.show(jugador);
+				ev.setCancelled(true);
+			}
 		}
 		
-		Boolean clickSign = false;
-
+		// Check for sign clicking
 		if (ev.getClickedBlock() != null) {
 			Iterator<Arena> localObject2 = this.am.arenas.iterator();
 			while (localObject2.hasNext()) {
 				Arena a = localObject2.next();
 				if ((a.sign != null) && (a.sign.equals(ev.getClickedBlock().getLocation()))) {
+					// Add player to the game
 					this.am.addPlayer(ev.getPlayer(), a.id);
-					clickSign = true;
+					
+					// Cancel the event
 					ev.setCancelled(true);
 				}
 			}
 		}
-
-		if ((jugador.getItemInHand().equals(this.object_kits_book) && (!clickSign))) {
-			this.selectKit.show(jugador);
-			ev.setCancelled(true);
-		}
-		
-		if ((jugador.getItemInHand().equals(this.emerald_item) && (!clickSign))) {
-			this.gemShop.show(jugador);
-			ev.setCancelled(true);
-		}
 	}
 	
-	//Evento los libros!!!!
-	@EventHandler
+	// Function to handle inventory click in order to select the kit
+	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInventoryClickEvent (InventoryClickEvent event) {
-		//Bloqueo los items ligados en todos los contenedores
-		Player jugador = (Player) event.getWhoClicked(); //Lo parseamos
+		Player player = (Player) event.getWhoClicked();
 	
+		// Is the select kit window?
 		if ((event.getInventory().getType() == InventoryType.CHEST) && (event.getInventory().getName().equals("Selecciona tu kit"))){
 			
 			int slot = event.getRawSlot();
 			
 			if ((slot > 21) || (slot == -999)) {
+				// Cancel the click in slots without kits
 				event.setCancelled(true);
 				return;
 			}
 			
 			if (event.getCurrentItem().getItemMeta() == null) return;
 			
-			//Metodo para evitar que cambien de kit en mitad de una partida
+			// Avoid changing the kit in the middle of a game
 			for (Arena a: this.am.arenas) {
-				if (a.jugadores.contains(jugador.getName())){
-					if (jugador.hasPermission("vd.vip")) {
-						//si el jugador es vip
-						if (!a.cambiarKit) {
-							s(jugador, "Solo puedes cambiar de kit en el descanso entre oleadas.");
+				if (a.players.contains(player.getName())){
+					if (player.hasPermission("dlv.vip")) {
+						// Only to VIP users
+						if (!a.changeKit) {
+							s(player, "Solo puedes cambiar de kit en el descanso entre oleadas.");
 							event.setCancelled(true);
-							jugador.closeInventory();
+							player.closeInventory();
 							return;
 						}
 					}
 					else {
-						if (!a.noHaEmpezado) {
+						if (!a.notStarted) {
 							event.setCancelled(true);
-							jugador.closeInventory();
+							player.closeInventory();
 							return;
 						}
 					}
@@ -966,157 +1183,158 @@ public class Main extends JavaPlugin implements Listener {
 			}
 
 			if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Tanque")) {
-				Main.this.setKit(jugador, "tanque");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "tanque");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Piromano")) {
-				Main.this.setKit(jugador, "piromano");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "piromano");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Bruja")) {
-				Main.this.setKit(jugador, "bruja");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "bruja");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Hardcore")) {
-				Main.this.setKit(jugador, "hardcore");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "hardcore");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Arquero")) {
-				Main.this.setKit(jugador, "arquero");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "arquero");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Cadete")) {
-				Main.this.setKit(jugador, "cadete");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "cadete");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Peleador")) {
-				Main.this.setKit(jugador, "peleador");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "peleador");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Congelado")) {
-				Main.this.setKit(jugador, "congelado");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "congelado");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Parkour")) {
-				Main.this.setKit(jugador, "parkour");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "parkour");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Gordito")) {
-				Main.this.setKit(jugador, "gordito");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "gordito");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Defensa")) {
-				Main.this.setKit(jugador, "defensa");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "defensa");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Corredor")) {
-				Main.this.setKit(jugador, "corredor");
-                Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				Main.this.setKit(player, "corredor");
+                Main.this.s(player, Main.this.config.get("kit_selected"));
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Espadachin")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "espadachin");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "espadachin");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Pacifico")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "pacifico");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "pacifico");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Protegido")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "protegido");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "protegido");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Experto")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "experto");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "experto");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Sabueso")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "sabueso");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "sabueso");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Conejo")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "conejo");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "conejo");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Enfermero")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "enfermero");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "enfermero");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Legolas")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "legolas");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "legolas");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("OP")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "op");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "op");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			} else if (event.getCurrentItem().getItemMeta().getDisplayName().contains("Dorado")) {
-				if (jugador.hasPermission("vd.vip")) {
-					Main.this.setKit(jugador, "dorado");
-					Main.this.s(jugador, Main.this.config.get("kit_selected"));
+				if (player.hasPermission("dlv.vip")) {
+					Main.this.setKit(player, "dorado");
+					Main.this.s(player, Main.this.config.get("kit_selected"));
 				} else {
-					Main.this.s(jugador, Main.this.config.get("kit_vip"));
+					Main.this.s(player, Main.this.config.get("kit_vip"));
 				}
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 			}
 		}
+		// Emerald shop
 		else if ((event.getInventory().getType() == InventoryType.CHEST) && (event.getInventory().getName().equals("Compra objetos"))) {
 			int slot = event.getRawSlot();
 			
@@ -1127,21 +1345,23 @@ public class Main extends JavaPlugin implements Listener {
 			
 			if (event.getCurrentItem().getItemMeta() == null){
 				event.setCancelled(true);
-				return; //Si es aire, vuelve...
+				return; // If it's nothing, come back
 			}
 			
-			boolean jugando = false;
+			boolean playing = false;
 			
+			// Check if the user is playing
 			for (Arena a: this.am.arenas) {
-				if (a.jugadores.contains(jugador.getName())){
-					jugando = true;
+				if (a.players.contains(player.getName())){
+					playing = true;
 					break;
 				}
 			}
 			
-			if (!jugando){
+			// If it isn't playing close the inventary and cancel the event
+			if (!playing){
 				event.setCancelled(true);
-				jugador.closeInventory();
+				player.closeInventory();
 				return;
 			}
 
@@ -1149,24 +1369,27 @@ public class Main extends JavaPlugin implements Listener {
 			
 			List<ItemStack> copia = this.gemShop.objectList;
 			Iterator<ItemStack> itr = copia.iterator();
+			
 			while (itr.hasNext()) {
-				if (i == slot) { //Si coinciden es mi objeto
-					ItemStack objeto = itr.next();
-					ItemMeta meta = (ItemMeta) objeto.getItemMeta();
-					String valorString = meta.getLore().toString().replace(" puntos.", "").replace("[", "").replace("]", "");
-					Integer valor = Integer.parseInt(valorString);
-					Integer puntos = this.am.getScore(jugador);
-					if (valor > puntos) {
-						s(jugador, "No tienes puntos suficientes");
+				if (i == slot) {
+					ItemStack object = itr.next();
+					ItemMeta meta = (ItemMeta) object.getItemMeta();
+					String valueString = meta.getLore().toString().replace(" puntos.", "").replace("[", "").replace("]", "");
+					Integer value = Integer.parseInt(valueString);
+					Integer points = this.am.getScore(player);
+					
+					// Check that the player has enought points
+					if (value > points) {
+						s(player, "No tienes puntos suficientes");
 						event.setCancelled(true);
-						jugador.closeInventory();
+						player.closeInventory();
 						break;
 					}
 					else {
-						this.am.setScore(jugador, puntos-valor);
-						jugador.getInventory().addItem(objeto);
+						this.am.setScore(player, points-value);
+						player.getInventory().addItem(object);
 						event.setCancelled(true);
-						jugador.closeInventory();
+						player.closeInventory();
 						break;
 					}
 				}
@@ -1177,7 +1400,7 @@ public class Main extends JavaPlugin implements Listener {
 			}
 		}
 		
-		else { //Otros inventarios
+		else { // Other
 			if (event.getCurrentItem() == null) return;
 			else if (event.getCurrentItem().getType() == Material.ENCHANTED_BOOK) {
 				event.setCancelled(true);
