@@ -116,11 +116,6 @@ public class ArenaManager
 		p.setHealth(20);
 
 		this.locs.put(p.getName(), p.getLocation());
-		/*Bukkit.getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-			public void run() {
-				p.teleport(a.ps);
-			}
-		}, 10L);*/
 		p.teleport(a.ps);
 
 		p.getInventory().addItem(new ItemStack[] { this.plugin.object_kits_book });
@@ -162,10 +157,9 @@ public class ArenaManager
 	}
 
 	public void removePlayer(final Player p) {
-		if (!this.plugin.config.cu)
-			return;
 		if (!p.isOnline()) //Tiene que estar conectado
 			return;
+		
 		Arena a = null;
 		for (Arena arena : this.arenas) {
 			if (arena.getPlayers().contains(p.getName())) {
@@ -195,7 +189,6 @@ public class ArenaManager
 		this.inv.remove(p.getName());
 		this.armor.remove(p.getName());
 
-		final Location loc = (Location)this.locs.get(p.getName());
 		p.teleport(a.lobby);
 
 		this.locs.remove(p.getName());
@@ -223,11 +216,11 @@ public class ArenaManager
 
 		this.plugin.updateSign(a);
 
-		Main._logD("Quitado jugador " + p.getName() + " de la arena " + a.getId() + " (" + a.pav + ").");
+		Main._log("Quitado jugador " + p.getName() + " de la arena " + a.getId() + " (" + a.pav + ").");
 
 		if (a.jugadores.size() == 0)
 			this.plugin.reloadArena(a.id);
-	} //FIN removePlayerA
+	}
 
 	public Arena createArena(Location z1, Location z2, Location z3, Location v1, Location v2, Location v3, Location ps, Location lobby, String pav, int id, int icon, int mp)
 	{
@@ -577,7 +570,7 @@ public class ArenaManager
 						}
 					}
 
-					p.damage(99999.0D);
+					//p.damage(99999.0D);
 					a.jugadoresmuertos.remove(s);
 				}
 			}

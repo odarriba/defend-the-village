@@ -16,6 +16,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
+@SuppressWarnings("unused")
 public class SelectKit implements Listener {
 
 	private Inventory inv;

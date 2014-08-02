@@ -29,6 +29,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
@@ -683,7 +684,7 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
-	@EventHandler
+	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onRespawn(PlayerRespawnEvent ev)
 	{
 		Player player = ev.getPlayer();
@@ -705,11 +706,12 @@ public class Main extends JavaPlugin implements Listener {
 //		}
 		
 		if (this.am.isInGame(player)) {
-			// Search in wich arena the user is playing
+			// Search in which arena the user is playing
 			for (Arena a : this.am.arenas) {
 				if (a.jugadores.contains(player.getName())) {
 					// Found the arena!
 					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado) && (!a.jugadoresmuertos.contains(ev.getPlayer().getName()))) {
+						_log("Poniendo al jugador en modo spectator");
 						// If there aren't waiting for the next wave, the game has started and the player wasn't dead, put him in
 						// spectator mode.
 						a.jugadoresmuertos.add(player.getName());
@@ -725,8 +727,7 @@ public class Main extends JavaPlugin implements Listener {
 						player.setFlying(true);
 						
 						// Try to teleport the player to it's location
-						final Location loc = (Location)this.am.locs.get(player);
-						ev.setRespawnLocation(loc);
+						ev.setRespawnLocation(player.getLocation());
 						
 						// Notify other players about the dead of this player
 						for (String s : a.getPlayers()) {
@@ -747,7 +748,7 @@ public class Main extends JavaPlugin implements Listener {
 	}
 
 	//Evento de que sale el jugador
-	@EventHandler
+	@EventHandler(priority = EventPriority.NORMAL)
 	public void onLeave(PlayerQuitEvent ev) {
 		Player player = ev.getPlayer();
 		
@@ -762,10 +763,7 @@ public class Main extends JavaPlugin implements Listener {
 		Player player = ev.getPlayer();
 		
 		if (this.am.isInGame(player)){
-			Material m = ev.getItemDrop().getItemStack().getType();
-			
-			if ((!m.equals(Material.COOKED_BEEF)) && (!m.equals(Material.APPLE)) && (!m.equals(Material.ROTTEN_FLESH)))
-				ev.setCancelled(true);
+			ev.setCancelled(true);
 		}
 	}
 
