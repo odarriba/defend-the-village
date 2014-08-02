@@ -444,24 +444,6 @@ public class Main extends JavaPlugin implements Listener {
 
 	// Function to handle commands from users
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-		if (cmd.getName().equalsIgnoreCase("abandonar")) {
-			// User want's to quit
-			if ((sender instanceof Player)) {
-				Player pl = (Player)sender;
-				
-				if (this.am.isInGame(pl)) {
-					// If it's in game, quit
-					this.am.removePlayer(pl);
-					s(sender, this.config.get("left"));
-				} else {
-					// If not
-					s(sender, this.config.get("need_to_play"));
-				}
-			} else {
-				s(sender, "Este comando solo lo puede ejecutar un jugador.");
-			}
-		}
-
 		if (cmd.getName().equalsIgnoreCase("dlv")) {
 			if ((args.length > 0) && (args[0].equalsIgnoreCase("abandonar"))) {
 				// User want's to quit

@@ -674,6 +674,9 @@ public class ArenaManager
 					}
 
 					a.deadPlayers.remove(s);
+					
+					// Add a wood sword to relived
+					p.getInventory().addItem(new ItemStack[] { new ItemStack(Material.WOOD_SWORD) });
 				}
 			}
 		}
