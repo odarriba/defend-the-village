@@ -1,8 +1,5 @@
 package com.asturcraft.defendTheVillage;
 
-import com.chaseoes.forcerespawn.ForceRespawn;
-import com.chaseoes.forcerespawn.event.ForceRespawnEvent;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,8 +7,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.logging.Level;
-
-import net.minecraft.server.v1_7_R3.EntityLiving;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -66,59 +61,63 @@ import org.bukkit.potion.PotionType;
 public class Main extends JavaPlugin implements Listener {
 	public ReadConfiguration config = null;
 	public static Main plugin = null;
+	public static boolean debug = false;
 	public ArenaManager am = null;
 
-	public ItemStack libro_kits_objeto = new ItemStack(Material.ENCHANTED_BOOK);
-	ItemMeta book1meta = this.libro_kits_objeto.getItemMeta();
-	ArrayList<String> book1description = new ArrayList();
-	public ItemStack esmeralda_item = new ItemStack(Material.EMERALD);
-	ItemMeta esmeralda_item_meta = this.esmeralda_item.getItemMeta();
+	public ItemStack object_kits_book = new ItemStack(Material.ENCHANTED_BOOK);
+	ItemMeta book_meta = this.object_kits_book.getItemMeta();
+	ArrayList<String> book_description = new ArrayList();
+	public ItemStack emerald_item = new ItemStack(Material.EMERALD);
+	ItemMeta emerald_item_meta = this.emerald_item.getItemMeta();
 	ArrayList<String> emdescription = new ArrayList();
 	ArrayList<String> allowedCommands = new ArrayList();
 	
 	//menu de los kits
-	public static SeleccionarKit selecKit;
+	public static SelectKit selectKit;
 	
 	//menu de los objetos
-	public TiendaPuntos tiendaPuntos;
+	public GemShop gemShop;
 
 	public void onEnable() {
-		plugin = this;
+		Main.plugin = this;
+		Main.debug = false;
+		
 		_log("Enabling...");
-	
+		
 		Bukkit.getPluginManager().registerEvents(this, this);
-		this.config = new ReadConfiguration(this);
-		this.am = new ArenaManager(this);
-
-		this.config.cu();
-		if (this.config.cu)
-			_log("config: OK");
 		
-		//libro de los kits
-		this.book1meta.setDisplayName(this.config.get("kit_book"));
-		this.book1description.add(ChatColor.DARK_GREEN + this.config.get("kit_book_desc"));
-		this.book1meta.setLore(this.book1description);
-		this.libro_kits_objeto.setItemMeta(this.book1meta);
-		
-		//tienda esmeralda
-		this.esmeralda_item_meta.setDisplayName(this.config.get("emerald_shop"));
-		this.emdescription.add(ChatColor.DARK_GREEN + this.config.get("emerald_shop_desc"));
-		this.esmeralda_item_meta.setLore(this.emdescription);
-		this.esmeralda_item.setItemMeta(this.esmeralda_item_meta);
-
-		if (!new File(getDataFolder(), "config.yml").exists())
+		// If the configuration doesn't exist, copy from resources
+		if (!new File(getDataFolder(), "config.yml").exists()){
+			_log("Configuration not found! Regenerating...");
 			saveResource("config.yml", false);
-		else {
-			LoadarenaConfig();
 		}
 		
-	    //Para poder seleccionar los kits
-	    selecKit = new SeleccionarKit(this);
-	    
-	    //Para poder seleccionar la tienda
-	    tiendaPuntos = new TiendaPuntos(this);
+		// Create common objects
+		this.config = new ReadConfiguration(this);
+		this.am = new ArenaManager(this);
 		
-		_logE("DEBUG INFO IS ENABLED!");
+		// Book of kits
+		this.book_meta.setDisplayName(this.config.get("kit_book"));
+		this.book_description.add(ChatColor.DARK_GREEN + this.config.get("kit_book_desc"));
+		this.book_meta.setLore(this.book_description);
+		this.object_kits_book.setItemMeta(this.book_meta);
+		
+		// Emerald shop
+		this.emerald_item_meta.setDisplayName(this.config.get("emerald_shop"));
+		this.emdescription.add(ChatColor.DARK_GREEN + this.config.get("emerald_shop_desc"));
+		this.emerald_item_meta.setLore(this.emdescription);
+		this.emerald_item.setItemMeta(this.emerald_item_meta);
+
+		// Load Arena configuration
+		loadArenaConfig();
+		
+	    // SelectKit to be able to select the kits
+	    this.selectKit = new SelectKit(this);
+	    
+	    // GemShop to generate the inventory view of the shop
+	    this.gemShop = new GemShop(this);
+		
+		_logD("DEBUG INFO IS ENABLED!");
 
 		Bukkit.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 			public void run() {
@@ -204,12 +203,16 @@ public class Main extends JavaPlugin implements Listener {
 		}, 200L, 200L);
 	}
 
-	private void LoadarenaConfig()
+	private void loadArenaConfig()
 	{
 		if ((this.config.cu) && (getConfig().getList("config.allowed_commands") != null)) {
 			this.allowedCommands = ((ArrayList)getConfig().getList("config.allowed_commands"));
-		//Carga una lista de comandos...
 		}
+		
+		if ((getConfig().getString("debug") != null) && (getConfig().getString("debug").equals("true"))){
+			Main.debug = true;
+		}
+		
 		if (getConfig().getConfigurationSection("arenas") != null) {
 			Iterator iterator = getConfig().getConfigurationSection("arenas").getKeys(false).iterator();
 			
@@ -245,8 +248,6 @@ public class Main extends JavaPlugin implements Listener {
 					arenaname.sign = sign;
 					updateSign(arenaname);
 				}
-
-				_log("! If you see any errors above, check arena: " + arena + " !");
 			}
 		}
 		try {
@@ -255,8 +256,6 @@ public class Main extends JavaPlugin implements Listener {
 			e.printStackTrace();
 		}
 	}
-	
-	//FIN del cargar configuración de la arena
 
 	public synchronized void reloadArena(final int id) {
 		_log("Reloading arena " + id + ".");
@@ -419,6 +418,8 @@ public class Main extends JavaPlugin implements Listener {
 							s(sender, "La ID debe ser un numero.");
 							return false;
 						}
+						
+						args[2] = args[2].toLowerCase();
 						if (checkArgs(args[2])) {
 							if ((args[2].toLowerCase().startsWith("v")) || (args[2].toLowerCase().startsWith("z")) || (args[2].equalsIgnoreCase("ps")) || (args[2].equalsIgnoreCase("lobby"))) {
 								if ((sender instanceof Player)) {
@@ -491,7 +492,13 @@ public class Main extends JavaPlugin implements Listener {
 	}
 
 	public static void _log(String s) {
-		Bukkit.getLogger().info("[" + plugin.getDescription().getName() + "] " + s);
+		Bukkit.getLogger().info("[" + Main.plugin.getDescription().getName() + "] " + s);
+	}
+	
+	public static void _logD(String s) {
+		if (Main.debug) {
+			Bukkit.getLogger().info("[" + Main.plugin.getDescription().getName() + "] " + s);
+		}
 	}
 
 	public static void _logE(String s) {
@@ -676,27 +683,57 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
-	//Evento de forcerespawn... se podrá eliminar o hacer de alguna otra forma?
 	@EventHandler
-	public void onForceRespawn(ForceRespawnEvent ev) {
-		if (this.am.isInGame(ev.getPlayer())) {
-			ev.setForcedRespawn(true);
-			for (Arena a : this.am.arenas)
-				if (a.jugadores.contains(ev.getPlayer().getName())) {
+	public void onRespawn(PlayerRespawnEvent ev)
+	{
+		Player player = ev.getPlayer();
+		
+//		if (this.am.isInGame(ev.getPlayer())) {
+//			for (Arena a : this.am.arenas) {
+//				if (a.jugadores.contains(ev.getPlayer().getName())) {
+//					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado)) {
+//						//ev.setRespawnLocation(ev.getPlayer().getLocation());
+//						ev.setRespawnLocation(a.lobby);
+//						this.am.removePlayer(ev.getPlayer());
+//					} else {
+//						Player p = ev.getPlayer();
+//						this.am.añadirKit(p);
+//						ev.setRespawnLocation(a.ps);
+//					}
+//				}
+//			}
+//		}
+		
+		if (this.am.isInGame(player)) {
+			// Search in wich arena the user is playing
+			for (Arena a : this.am.arenas) {
+				if (a.jugadores.contains(player.getName())) {
+					// Found the arena!
 					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado) && (!a.jugadoresmuertos.contains(ev.getPlayer().getName()))) {
-						a.jugadoresmuertos.add(ev.getPlayer().getName());
+						// If there aren't waiting for the next wave, the game has started and the player wasn't dead, put him in
+						// spectator mode.
+						a.jugadoresmuertos.add(player.getName());
+						
 						for (Player p : Bukkit.getOnlinePlayers()) {
-							if (p != ev.getPlayer()) {
-								p.hidePlayer(ev.getPlayer());
+							if (p != player) {
+								p.hidePlayer(player);
 							}
 						}
 
-						ev.getPlayer().setAllowFlight(true);
-						ev.getPlayer().setFlying(true);
+						// Ability to fly activated
+						player.setAllowFlight(true);
+						player.setFlying(true);
+						
+						// Try to teleport the player to it's location
+						final Location loc = (Location)this.am.locs.get(player);
+						ev.setRespawnLocation(loc);
+						
+						// Notify other players about the dead of this player
 						for (String s : a.getPlayers()) {
 							s(Bukkit.getPlayer(s), this.config.get("died").replace("$1", ev.getPlayer().getName()));
 						}
 						
+						// Remove potion effects in the player
 						for(PotionEffect pe : ev.getPlayer().getActivePotionEffects()){
 							ev.getPlayer().removePotionEffect(pe.getType());
 						}
@@ -705,24 +742,6 @@ public class Main extends JavaPlugin implements Listener {
 					}
 					this.am.checkPlayers(a);
 				}
-		}
-	}
-
-	@EventHandler
-	public void onRespawn(PlayerRespawnEvent ev)
-	{
-		if (this.am.isInGame(ev.getPlayer())) {
-			for (Arena a : this.am.arenas) {
-				if (a.jugadores.contains(ev.getPlayer().getName())) {
-					if ((!a.esperandoSiguienteOleada) && (!a.noHaEmpezado)) {
-						//ev.setRespawnLocation(ev.getPlayer().getLocation());
-						ev.setRespawnLocation(a.lobby);
-					} else {
-						Player p = ev.getPlayer();
-						this.am.añadirKit(p);
-						ev.setRespawnLocation(a.ps);
-					}
-				}
 			}
 		}
 	}
@@ -730,21 +749,10 @@ public class Main extends JavaPlugin implements Listener {
 	//Evento de que sale el jugador
 	@EventHandler
 	public void onLeave(PlayerQuitEvent ev) {
-		if (this.am.isInGame(ev.getPlayer())) {
-			this.am.removePlayer(ev.getPlayer());
-		}
-	}
-
-	//Evento de que se une al servidor
-	@EventHandler
-	public void onJoin(PlayerJoinEvent ev) {
-		if (this.am.isInGame(ev.getPlayer())) {
-			if (ev.getPlayer().isDead()) {
-				ForceRespawn.sendRespawnPacket(ev.getPlayer());
-			}
-			
-			ev.getPlayer().getInventory().clear();
-			setKit(ev.getPlayer(), "tanque"); //Pone el kit default de tank a todo el que se una al servidor
+		Player player = ev.getPlayer();
+		
+		if (this.am.isInGame(player)) {
+			this.am.removePlayer(player);
 		}
 	}
 
@@ -803,8 +811,6 @@ public class Main extends JavaPlugin implements Listener {
 						ev.setCancelled(true);
 				}
 			}
-			else
-				ev.setCancelled(true);
 		}
 	}
 
@@ -900,13 +906,13 @@ public class Main extends JavaPlugin implements Listener {
 			}
 		}
 
-		if ((jugador.getItemInHand().equals(this.libro_kits_objeto) && (!clickSign))) {
-			selecKit.show(jugador);
+		if ((jugador.getItemInHand().equals(this.object_kits_book) && (!clickSign))) {
+			this.selectKit.show(jugador);
 			ev.setCancelled(true);
 		}
 		
-		if ((jugador.getItemInHand().equals(this.esmeralda_item) && (!clickSign))) {
-			tiendaPuntos.show(jugador);
+		if ((jugador.getItemInHand().equals(this.emerald_item) && (!clickSign))) {
+			this.gemShop.show(jugador);
 			ev.setCancelled(true);
 		}
 	}
@@ -1132,7 +1138,7 @@ public class Main extends JavaPlugin implements Listener {
 
 			Integer i = 0;
 			
-			List<ItemStack> copia = tiendaPuntos.listaObjetos;
+			List<ItemStack> copia = this.gemShop.objectList;
 			Iterator<ItemStack> itr = copia.iterator();
 			while (itr.hasNext()) {
 				if (i == slot) { //Si coinciden es mi objeto

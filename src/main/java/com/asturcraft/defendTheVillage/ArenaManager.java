@@ -123,7 +123,7 @@ public class ArenaManager
 		}, 10L);*/
 		p.teleport(a.ps);
 
-		p.getInventory().addItem(new ItemStack[] { this.plugin.libro_kits_objeto });
+		p.getInventory().addItem(new ItemStack[] { this.plugin.object_kits_book });
 		p.updateInventory();
 
 		createScoreboard(p, a);
@@ -162,18 +162,6 @@ public class ArenaManager
 	}
 
 	public void removePlayer(final Player p) {
-		//Si está muerto, eso lo que hace es esperar al ForceRespawn (o eso creo...)
-		if (p.isDead())
-			Bukkit.getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-				public void run() {
-					ArenaManager.this.removePlayerA(p);
-				}
-			}, 1L); // 1 tick de delay
-		else
-			removePlayerA(p); //sino directamente lo quito
-	}
-
-	public void removePlayerA(final Player p) {
 		if (!this.plugin.config.cu)
 			return;
 		if (!p.isOnline()) //Tiene que estar conectado
@@ -208,13 +196,7 @@ public class ArenaManager
 		this.armor.remove(p.getName());
 
 		final Location loc = (Location)this.locs.get(p.getName());
-		Bukkit.getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable() {
-			public void run() {
-				p.teleport(loc);
-			}
-		}, 10L);
-		//No entiendo por qué un delay
-		//p.teleport(loc);
+		p.teleport(a.lobby);
 
 		this.locs.remove(p.getName());
 
@@ -241,7 +223,7 @@ public class ArenaManager
 
 		this.plugin.updateSign(a);
 
-		Main._log("Quitado jugador " + p.getName() + " de la arena " + a.getId() + " (" + a.pav + ").");
+		Main._logD("Quitado jugador " + p.getName() + " de la arena " + a.getId() + " (" + a.pav + ").");
 
 		if (a.jugadores.size() == 0)
 			this.plugin.reloadArena(a.id);
@@ -303,7 +285,7 @@ public class ArenaManager
 
 	public void start(Arena a) {
 		if (a.oleada > 0) return;
-		Main._log("Comenzando arena " + a.getId() + " (" + a.pav + ").");
+		Main._logD("Comenzando arena " + a.getId() + " (" + a.pav + ").");
 		a.puedeUnirse = false;
 		a.cambiarKit = false;
 		a.oleada = 1;
@@ -316,11 +298,11 @@ public class ArenaManager
 				a.jugadores.remove(s);
 			} else {
 				this.plugin.s(Bukkit.getPlayer(s), this.plugin.config.get("starting").replace("$1", Integer.toString(a.oleada)));
-				if (!Bukkit.getPlayer(s).getInventory().contains(this.plugin.esmeralda_item)) {
-					Bukkit.getPlayer(s).getInventory().addItem(new ItemStack[] { this.plugin.esmeralda_item });
+				if (!Bukkit.getPlayer(s).getInventory().contains(this.plugin.emerald_item)) {
+					Bukkit.getPlayer(s).getInventory().addItem(new ItemStack[] { this.plugin.emerald_item });
 				}
-				if (Bukkit.getPlayer(s).getInventory().contains(this.plugin.libro_kits_objeto)) {
-					Bukkit.getPlayer(s).getInventory().removeItem(new ItemStack[] { this.plugin.libro_kits_objeto });
+				if (Bukkit.getPlayer(s).getInventory().contains(this.plugin.object_kits_book)) {
+					Bukkit.getPlayer(s).getInventory().removeItem(new ItemStack[] { this.plugin.object_kits_book });
 				}
 				Player p = Bukkit.getPlayer(s);
 				if (p.getScoreboard().getObjective(DisplaySlot.SIDEBAR) == null)
@@ -372,7 +354,7 @@ public class ArenaManager
 	public void nextwave(Arena a) {
 		if (a.oleada == 0) return;
 		a.oleada += 1;
-		Main._log("Siguiente oleada (" + a.oleada + ") en la arena " + a.getId() + "(" + a.pav + ").");
+		Main._logD("Siguiente oleada (" + a.oleada + ") en la arena " + a.getId() + "(" + a.pav + ").");
 		a.cambiarKit = false;
 		for (String s : a.jugadores) {
 			Player jugador = Bukkit.getPlayer(s);
@@ -380,16 +362,16 @@ public class ArenaManager
 				a.jugadores.remove(s);
 			} else {
 				this.plugin.s(jugador, this.plugin.config.get("starting").replace("$1", Integer.toString(a.oleada)));
-				if (!jugador.getInventory().contains(this.plugin.esmeralda_item)) {
+				if (!jugador.getInventory().contains(this.plugin.emerald_item)) {
 					if (this.plugin.getKit(jugador).equals("hardcore")) {
 						//No le doy item, porque está muerto
 					}
 					else {
-						jugador.getInventory().addItem(new ItemStack[] { this.plugin.esmeralda_item });
+						jugador.getInventory().addItem(new ItemStack[] { this.plugin.emerald_item });
 					}
 				}
-				if (jugador.getInventory().contains(this.plugin.libro_kits_objeto)) {
-					jugador.getInventory().removeItem(new ItemStack[] { this.plugin.libro_kits_objeto });
+				if (jugador.getInventory().contains(this.plugin.object_kits_book)) {
+					jugador.getInventory().removeItem(new ItemStack[] { this.plugin.object_kits_book });
 					añadirKit(jugador);
 				}
 				if (jugador.getScoreboard().getObjective(DisplaySlot.SIDEBAR) == null)
@@ -551,7 +533,7 @@ public class ArenaManager
 	} //Fin siguienteOleada
 
 	public void checkVillagers(Arena a) {
-		Main._log("Comprobando aldeanos en la arena " + a.getId() + "(" + a.pav + ").");
+		Main._logD("Comprobando aldeanos en la arena " + a.getId() + "(" + a.pav + ").");
 		if ((a.aldeanos.size() == 0) && (a.check)) {
 			Main._log("0 encontrados!");
 			for (String s : a.jugadores) {
@@ -560,83 +542,9 @@ public class ArenaManager
 			this.plugin.reloadArena(a.id);
 		}
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	/*public void licencia() {
-	
-		//Variables
-		String respuesta = "";
-	
-		try {
-			respuesta = this.enviarIP();
-		} catch (Exception e1) {
-			Bukkit.getServer().getPluginManager().disablePlugin(this.plugin);
-			Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "stop");
-			return;
-		}
-		if (!respuesta.equals("200")) {
-			Main._logE("Iniciando plugin");
-		}
-		else {
-			Bukkit.getServer().getPluginManager().disablePlugin(this.plugin);
-			Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), "stop");
-			return;
-		}
-	} 
-	
-	//METODOS PARA LA LICENCIA
-	private String enviarIP() throws Exception {
-		
-		String USER_AGENT = "LicenciaVD";
-		 
-		String url = "http://sv.nexuscraft.es/DLV/Privados/licencia.php?ip=" + URLEncoder.encode(Bukkit.getServer().getIp().toString(), "UTF-8");
- 
-		URL obj = new URL(url);
-		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
- 
-		// optional default is GET
-		con.setRequestMethod("GET");
- 
-		//add request header
-		con.setRequestProperty("User-Agent", USER_AGENT);
- 
-		int responseCode = con.getResponseCode();
-		//Main._log("Codigo respuesta : " + responseCode);
- 
-		BufferedReader in = new BufferedReader(
-		        new InputStreamReader(con.getInputStream()));
-		String inputLine;
-		StringBuffer response = new StringBuffer();
- 
-		while ((inputLine = in.readLine()) != null) {
-			response.append(inputLine);
-		}
-		in.close();
- 
-		//print result
-		//System.out.println(response.toString());
-		
-		return response.toString();
- 
-	}
-	
-
-	
-	*/
-	//FIn de licencia
 
 	public void checkZombies(Arena a) {
-		Main._log("Comprobando zombies en la arena " + a.getId() + "(" + a.pav + ").");
+		Main._logD("Comprobando zombies en la arena " + a.getId() + "(" + a.pav + ").");
 		if ((a.zombies.size() == 0) && (a.check)) {
 			Main._log("0 encontrados! Esperando a la siguiente oleada, reviviendo jugadores...");
 			a.esperandoSiguienteOleada = true;
@@ -657,11 +565,9 @@ public class ArenaManager
 			
 			for (String s : a.jugadoresmuertos) {
 				Player p = Bukkit.getPlayer(s);
-				if (this.plugin.getKit(p).equals("hardcore")) {
-					//No le voy a resucitar, solo tiene 1 vida por juego
-				}
-				else
-				{
+				
+				// Check that  the dead player wasn't playing in hardcore mode
+				if (!this.plugin.getKit(p).equals("hardcore")) {
 					p.setFlying(false);
 					p.setAllowFlight(false);
 
@@ -679,7 +585,7 @@ public class ArenaManager
 	} //FIN checkZombies
 
 	public void checkPlayers(Arena a) {
-		Main._log("Comprobando jugadores en la arena " + a.getId() + "(" + a.pav + ").");
+		Main._logD("Comprobando jugadores en la arena " + a.getId() + "(" + a.pav + ").");
 		if ((a.jugadores.size() <= a.jugadoresmuertos.size()) && (a.check)) {
 			Main._log("Todos los jugadores han muerto!");
 			for (String s : a.jugadores) {

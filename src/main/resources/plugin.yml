@@ -1,7 +1,7 @@
-name: Defend The Village
+name: DefendTheVillage
 version: 1.1b
 autors: [odarriba] 
-main: com.asturcraft.defendTheVillager.Main
+main: com.asturcraft.defendTheVillage.Main
 softdepend: [Multiverse-Core]
 depend: [ForceRespawn]
 commands:

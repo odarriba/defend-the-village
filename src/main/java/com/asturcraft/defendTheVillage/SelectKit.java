@@ -16,36 +16,36 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
-public class SeleccionarKit implements Listener {
+public class SelectKit implements Listener {
 
 	private Inventory inv;
 	
-	public SeleccionarKit(Plugin p) {
+	public SelectKit(Plugin p) {
 		inv = Bukkit.getServer().createInventory(null, 27, "Selecciona tu kit");
 		
-		//kits
-		ItemStack tanque = crearKit(Material.IRON_CHESTPLATE, "Tanque");
-		ItemStack piromano = crearKit(Material.FIRE, "Piromano");
-		ItemStack bruja = crearKit(Material.POTION, "Bruja");
-		ItemStack hardcore = crearKit(Material.SKULL_ITEM, "Hardcore");
-		ItemStack arquero = crearKit(Material.BOW, "Arquero");
-		ItemStack cadete = crearKit(Material.WOOD_SWORD, "Cadete");
-		ItemStack peleador = crearKit(Material.SKULL_ITEM, "Peleador");
-		ItemStack congelado = crearKit(Material.SNOW_BALL, "Congelado");
-		ItemStack parkour = crearKit(Material.FEATHER, "Parkour");
-		ItemStack gordito = crearKit(Material.CAKE, "Gordito");
-		ItemStack defensa = crearKit(Material.LEATHER_CHESTPLATE, "Defensa");
-		ItemStack corredor = crearKit(Material.FEATHER, "Corredor");
-		ItemStack espadachin = crearKitVIP(Material.IRON_SWORD, "Espadachin");
-		ItemStack pacifico = crearKitVIP(Material.STICK, "Pacifico");
-		ItemStack protegido = crearKitVIP(Material.LEATHER_HELMET, "Protegido");
-		ItemStack experto = crearKitVIP(Material.DIAMOND_HELMET, "Experto");
-		ItemStack sabueso = crearKitVIP(Material.BONE, "Sabueso");
-		ItemStack conejo = crearKitVIP(Material.FEATHER, "Conejo");
-		ItemStack enfermero = crearKitVIP(Material.POTION, "Enfermero");
-		ItemStack legolas = crearKitVIP(Material.BOW, "Legolas");
-		ItemStack manzana_dorada = crearKitVIP(Material.GOLDEN_APPLE, "Dorado");
-		ItemStack op = crearKitVIP(Material.IRON_LEGGINGS, "OP");
+		// Kits in this version (in Spanish!!)
+		ItemStack tanque = createKit(Material.IRON_CHESTPLATE, "Tanque");
+		ItemStack piromano = createKit(Material.FIRE, "Piromano");
+		ItemStack bruja = createKit(Material.POTION, "Bruja");
+		ItemStack hardcore = createKit(Material.SKULL_ITEM, "Hardcore");
+		ItemStack arquero = createKit(Material.BOW, "Arquero");
+		ItemStack cadete = createKit(Material.WOOD_SWORD, "Cadete");
+		ItemStack peleador = createKit(Material.SKULL_ITEM, "Peleador");
+		ItemStack congelado = createKit(Material.SNOW_BALL, "Congelado");
+		ItemStack parkour = createKit(Material.FEATHER, "Parkour");
+		ItemStack gordito = createKit(Material.CAKE, "Gordito");
+		ItemStack defensa = createKit(Material.LEATHER_CHESTPLATE, "Defensa");
+		ItemStack corredor = createKit(Material.FEATHER, "Corredor");
+		ItemStack espadachin = createVipKit(Material.IRON_SWORD, "Espadachin");
+		ItemStack pacifico = createVipKit(Material.STICK, "Pacifico");
+		ItemStack protegido = createVipKit(Material.LEATHER_HELMET, "Protegido");
+		ItemStack experto = createVipKit(Material.DIAMOND_HELMET, "Experto");
+		ItemStack sabueso = createVipKit(Material.BONE, "Sabueso");
+		ItemStack conejo = createVipKit(Material.FEATHER, "Conejo");
+		ItemStack enfermero = createVipKit(Material.POTION, "Enfermero");
+		ItemStack legolas = createVipKit(Material.BOW, "Legolas");
+		ItemStack manzana_dorada = createVipKit(Material.GOLDEN_APPLE, "Dorado");
+		ItemStack op = createVipKit(Material.IRON_LEGGINGS, "OP");
 		
 		inv.setItem(0, tanque);
 		inv.setItem(1, piromano);
@@ -74,7 +74,7 @@ public class SeleccionarKit implements Listener {
 		Bukkit.getServer().getPluginManager().registerEvents(this, p);
 	}
 	
-	private ItemStack crearKit(Material objeto, String nombre) {
+	private ItemStack createKit(Material objeto, String nombre) {
 		ItemStack kit = new ItemStack(objeto, 1);
 		ItemMeta meta = (ItemMeta) kit.getItemMeta();
 		ArrayList<String> lore = new ArrayList<String>();
@@ -85,7 +85,7 @@ public class SeleccionarKit implements Listener {
 		return kit;
 	}
 	
-	private ItemStack crearKitVIP(Material objeto, String nombre) {
+	private ItemStack createVipKit(Material objeto, String nombre) {
 		ItemStack kit = new ItemStack(objeto, 1);
 		ItemMeta meta = (ItemMeta) kit.getItemMeta();
 		ArrayList<String> lore = new ArrayList<String>();
