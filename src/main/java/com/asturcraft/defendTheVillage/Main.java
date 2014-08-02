@@ -46,6 +46,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -684,6 +685,16 @@ public class Main extends JavaPlugin implements Listener {
 		}
 	}
 
+	@EventHandler(priority=EventPriority.HIGHEST)
+	public void onKick(PlayerKickEvent ev)
+	{
+		Player player = ev.getPlayer();
+		
+		if (this.am.isInGame(player)) {
+			this.am.removePlayer(player);
+		}
+	}
+	
 	@EventHandler(priority=EventPriority.HIGHEST)
 	public void onRespawn(PlayerRespawnEvent ev)
 	{
