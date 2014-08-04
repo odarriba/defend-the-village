@@ -3,7 +3,7 @@ version: 1.1b
 autors: [odarriba] 
 main: com.asturcraft.defendTheVillage.Main
 softdepend: [Multiverse-Core]
-depend: [ForceRespawn]
+depend: []
 commands:
   dlv:
     description: Minigame of Defend The Village.
